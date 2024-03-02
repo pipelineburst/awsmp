@@ -25,12 +25,12 @@ class AmpEdgeStack(Stack):
 
         self.acm_certificate=acm_cert # Reference for a downstream Stack        
 
-        ### defining the lambda function that will then be associated to a cf distribtion
+        ## defining the lambda function that will then be associated to a cf distribtion
         # creating the lambda execution role 
         lambda_role = iam.Role(
             self,
             "lambda_role",
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            assumed_by=iam.CompositePrincipal(iam.ServicePrincipal("lambda.amazonaws.com"), iam.ServicePrincipal("edgelambda.amazonaws.com") ),
             managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")],
         )
         # adding permissions to the lambda execution role
@@ -49,16 +49,22 @@ class AmpEdgeStack(Stack):
                 resources=["arn:aws:dynamodb:*:*:table/*"],
             )
         )
-        
+
+        lambda_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "service-role/AWSLambdaBasicExecutionRole"
+            )
+        )
+
         # creating the lambda function
         lambda_function = lambda_.Function(
             self,
             "awsmp_lambda_function",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="lambda_function.handler",
+            handler="lambda.lambda_handler",
             code=lambda_.Code.from_asset("lambda"),
             role=lambda_role,
-            timeout=Duration.seconds(60),
+            timeout=Duration.seconds(5),
         )
-                
         
+        self.edge_function=lambda_function # Reference for a downstream Stack 

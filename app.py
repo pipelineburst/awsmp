@@ -23,8 +23,9 @@ stack2 = AmpFulfillmentStack(app, "AmpFulfillmentStack",
             termination_protection=False, 
             cross_region_references=True,
             tags={"marketplace":"ainsights"}, 
-            env=cdk.Environment(region=region_1, account=account_id),
+            env=cdk.Environment(region=region_2, account=account_id),
             cert=stack1.acm_certificate,
+            edge_func=stack1.edge_function,
         )
 
 cdk.Tags.of(stack1).add(key="project",value="awsmp")
