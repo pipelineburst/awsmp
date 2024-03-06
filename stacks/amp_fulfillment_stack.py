@@ -4,22 +4,21 @@ from aws_cdk import (
     RemovalPolicy,
     aws_s3_deployment as s3deploy,
     aws_certificatemanager as acm,
-    aws_sqs as sqs,
     aws_iam as iam,
-    aws_kms as kms,
-    aws_ecr as ecr,
     aws_s3 as s3,
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_cloudfront as cloudfront,
     aws_dynamodb as dynamodb,
     aws_lambda  as lambda_,
+    aws_lambda_destinations as destinations,
+    aws_sns as sns,
 )
 from constructs import Construct
 
 class AmpFulfillmentStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, cert, edge_func, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, cert, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         ### Create S3 bucket for AMP fulfillment website
@@ -72,7 +71,8 @@ class AmpFulfillmentStack(Stack):
                     ),
                     behaviors=[
                         cloudfront.Behavior(
-                            is_default_behavior=True
+                            is_default_behavior=True,
+                            #allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL, #todo
                         )
                     ]
                 )
@@ -123,16 +123,37 @@ class AmpFulfillmentStack(Stack):
                 "service-role/AWSLambdaBasicExecutionRole"
             )
         )
+        # adding permissions to the lambda execution role
+        lambda_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "AWSMarketplaceGetEntitlements"
+            )
+        )
+
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "aws-marketplace:ResolveCustomer",
+                ],
+                resources=["*"],
+            )
+        )
+
+        # creating an sns topic that we then use as a lambda destination
+        awsmp_sns_topic = sns.Topic(self, "awsmp_sns_topic")
 
         # creating the lambda function
         new_lambda_function = lambda_.Function(
             self,
             "new_awsmp_lambda_function",
+            description="Lambda triggered by cloudfrint to interact with awsmp and dynamydb api's",
             runtime=lambda_.Runtime.PYTHON_3_11,
             handler="lambda.lambda_handler",
             code=lambda_.Code.from_asset("lambda"),
             role=lambda_role,
             timeout=Duration.seconds(5),
+            on_success=destinations.SnsDestination(awsmp_sns_topic)
         )
 
         # note: for now, manually added the lambda arn version to the cf default behaviour in the console

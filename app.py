@@ -6,7 +6,7 @@ from stacks.amp_edge_stack import AmpEdgeStack
 
 app = cdk.App()
 
-account_id = "608017977336"
+account_id = "069127586842"
 region_1 = "eu-west-1"
 region_2 = "us-east-1"
 
@@ -25,7 +25,6 @@ stack2 = AmpFulfillmentStack(app, "AmpFulfillmentStack",
             tags={"marketplace":"ainsights"}, 
             env=cdk.Environment(region=region_2, account=account_id),
             cert=stack1.acm_certificate,
-            edge_func=stack1.edge_function,
         )
 
 cdk.Tags.of(stack1).add(key="project",value="awsmp")
